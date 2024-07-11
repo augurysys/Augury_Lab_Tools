@@ -158,7 +158,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-import AmitFunction
+#import AmitFunction
 import qasync
 from bleak import BleakScanner, BleakClient
 from bleak.backends.device import BLEDevice
@@ -699,7 +699,7 @@ class MainWindows(QMainWindow, Ui_MainWindow):
     def __init__(self, window):
         super().__init__()
         global loop
-        print("init main ui")
+        print("init main ui - shaked Version ")
         self.setupUi(window)
         self.resize(750, 650)
         self._client = None
