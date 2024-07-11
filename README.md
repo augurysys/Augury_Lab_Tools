@@ -1,2 +1,5 @@
 # Augury_Lab_Tools
-Augury_Lab_Tools_for_connecting_to_EP
+Augury Lab Tools for connecting to EP 
+
+Support GATT service + jig cmd 
+
