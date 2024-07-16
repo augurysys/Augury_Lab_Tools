@@ -158,7 +158,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-#import AmitFunction
+import AmitFunction
 import qasync
 from bleak import BleakScanner, BleakClient
 from bleak.backends.device import BLEDevice
@@ -168,6 +168,7 @@ from PyQt5 import QtCore, QtWidgets, QtWebEngineWidgets
 import plotly.express as px
 import plotly.graph_objects as go
 from threading import Event
+from AuguryTestSample import *
 
 UART_SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 #UART_RX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -303,7 +304,8 @@ def parse_data(data):
     json_data['FW_Version'] = fw_revision
     json_data['Sensor_ID'] = sensor_id
     json_data['Data_Channel'] = data_channel[meta_channel]
-    json_data['Data_Format'] = data_format[meta_data_format]
+    #print(data_format)
+    #json_data['Data_Format'] = data_format[meta_data_format]
     json_data['Data_Unit'] = data_units[meta_data_unit]
     json_data['Sampling_Frequency'] = meta_sampling_freq
     json_data['Sensitivity'] = meta_scale
@@ -699,7 +701,7 @@ class MainWindows(QMainWindow, Ui_MainWindow):
     def __init__(self, window):
         super().__init__()
         global loop
-        print("init main ui - shaked Version ")
+        print("init main ui")
         self.setupUi(window)
         self.resize(750, 650)
         self._client = None
@@ -762,6 +764,7 @@ class MainWindows(QMainWindow, Ui_MainWindow):
         self.pushButton_5.clicked.connect(self.handle_pb5)
         self.pushButton_6.clicked.connect(self.handle_pb66)
 
+        self.pushButton_4.setText("Sample & save ")
 
 
     def end_sample(self, buffer):
@@ -931,10 +934,16 @@ class MainWindows(QMainWindow, Ui_MainWindow):
     # print(_value)
     @qasync.asyncSlot()
     async def handle_pb4(self):
-        global hw_revision
-        global verbose
-        global output_path
         global address_device
+        global data_received_event
+        global all_data_received
+        global DataNotificationState
+        global verbose
+        global mac_addr
+        global hw_revision
+        global fw_revision
+        global output_path
+        global serial_number
 
         sensor_id = 99 # make parameter
         hw = None
@@ -972,9 +981,6 @@ class MainWindows(QMainWindow, Ui_MainWindow):
                     output_path = base_path + '_{}'.format(i)
         if not os.path.exists(output_path):
             os.makedirs(output_path)
-
-
-
 
 
         print("######################   start   ##########################")
@@ -1031,6 +1037,51 @@ class MainWindows(QMainWindow, Ui_MainWindow):
             except Exception as e:
                 _value = str(e).encode()
 
+            while all_data_received is False:
+                print("start Collecting data")
+                data_received_event.clear()
+                # data_received_waiter_task = asyncio.create_task(waiter(data_received_event))
+                # await event.wait() !!
+                try:
+                    print("######################   start asyncio  ##########################{0}")
+                    data_received_event = asyncio.Event()
+                    print(data_received_event.is_set())
+                    print(data_received_event)
+                    print("                                 i start to wait here !!!!!!!!!!!!!!!!!!!!")
+                    await data_received_event.wait()
+
+                    print("                                 i am wait here  !!!!!!!!!!!!!!!!!!!!!!!!!")
+                    # t = [asyncio.create_task(task1(data_received_event, i)) for i in range(3)]
+                    # tasks = asyncio.gather(divide(4, 2), divide(4, 0))
+                    # try:
+                    #     await tasks
+                    # event.set()
+                    # await asyncio.wait(data_received_event)
+
+                    # done, _ = await asyncio.wait([task_a, task_b])
+                    # done, _ = await asyncio.wait(data_received_waiter_task)
+                    # for task in done:
+                    #    if task.exception():
+                    #      raise task.exception()
+                    #    else:
+                    #     print(task.result())
+                    # print("11111111111111111111111111111111111111111111")
+                    # print(" got Future <Future pending> attached to a different loop ")
+                    # await asyncio.wait(data_received_waiter_task, timeout=3)
+                    # await asyncio.sleep(0)
+                    # await asyncio.gather(data_received_waiter_task, timeout=5)
+                    # results = await asyncio.gather(data_received_waiter_task)
+                    # print("pass")
+                    # group = asyncio.gather(data_received_waiter_task)
+                except (asyncio.CancelledError, asyncio.TimeoutError) as e:
+                    logger.error(e)
+                    print("222222222222222222222222222222222222")
+                    all_data_received = True
+            print("------------------------------------------------------")
+            print("------------------------------------------------------")
+            print("------------------------------------------------------")
+            print("------------------------------------------------------")
+            print("######################   DATA IS Ready !!!!!     ##########################")
             # logger.info("[Characteristic Data  ] Write Value: {0} ".format(to_hex(write_data)))
 
         #     while all_data_received is False:
@@ -1080,6 +1131,16 @@ class MainWindows(QMainWindow, Ui_MainWindow):
         # #######################################################
         # print("     1.       start data_notification_handler ")
         # await client.start_notify(DataCharacteristicUUIDString, data_notification_handler)
+
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+        A = Vibration_Analysis()
+        print(output_path)
+        A.run_vibration_analysis(report_path= output_path, method="wave_packet", white_list= "89, 281, 479, 677, 877, 1069, 1259, 1459, 1657, 1847, 2039, 2237, 2437, 2633, 2833, 3023, 3217, 3413, 3613, 3803, 4001, 4201, 4397, 4591, 4793, 4993, 5189, 5387, 5573, 5779, 5953, 6151",
+                                  shaker_reports_full_path="piezo.json", shaker_tool_only='false')
 
     @qasync.asyncSlot()
     async def handle_pb5(self):
@@ -1674,7 +1735,7 @@ class MainWindows(QMainWindow, Ui_MainWindow):
 
         self.devices.clear()
         self.comboBox.clear()
-        devices = await BleakScanner.discover(timeout=10, return_adv=True)
+        devices = await BleakScanner.discover(timeout=4, return_adv=True)
         self.devices.extend(devices)
         # "address", "name", "details", "_rssi", "_metadata"
         print("==============")
