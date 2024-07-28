@@ -158,7 +158,9 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-import AmitFunction
+from PyQt5 import QtWebEngineWidgets
+#import AmitFunction
+#elf.Webwidget = QtWebEngineWidgets.QWebEngineView(parent=self.centralwidget)
 import qasync
 from bleak import BleakScanner, BleakClient
 from bleak.backends.device import BLEDevice
@@ -189,10 +191,13 @@ DataServiceUUIDString = "bf289137-78a3-4c60-b381-25558e78e252"
 DataCharacteristicUUIDString = "b5d1f9be-b0bb-4059-9cb7-c2fffd184770"
 
 DeviceInformationServiceUuidString = "0000180A-0000-1000-8000-00805f9b34fb"
-FirmwareRevisionCharacteristicUuidString = "00002A26-0000-1000-8000-00805f9b34fb"
 
+ModelNumberNameCharacteristicUuidString =  "00002A24-0000-1000-8000-00805f9b34fb"
+SerialNumberCharacteristicUuidString =     "00002A25-0000-1000-8000-00805f9b34fb"
+FirmwareRevisionCharacteristicUuidString = "00002A26-0000-1000-8000-00805f9b34fb"
 HardwareRevisionCharacteristicUuidString = "00002A27-0000-1000-8000-00805f9b34fb"
-SerialNumberCharacteristicUuidString = "00002A25-0000-1000-8000-00805f9b34fb"
+ManufacturerNameCharacteristicUuidString = "00002A29-0000-1000-8000-00805f9b34fb"
+
 
 TestingServiceUUIDString = "53cdde50-a736-4793-a0dd-a818fbbd3fd0"
 TestingCharacteristicUUIDString = "54f5aab5-5ebf-40b1-a819-e49bf3024048"
@@ -222,8 +227,8 @@ verbose = True
 mac_addr = ""
 output_path = None
 address_device = ""
-
-
+list_Device = None
+devices = []
 def parse_data(data):
     global all_data_received
     global mac_addr
@@ -402,14 +407,20 @@ class QBleakClient(QObject):
         return BleakClient(self.device, disconnected_callback=self.handle_disconnect2)
 
     async def start(self):
-        print("             FC ->  start in client -> connect & handler ")
-        MainWindows.UiPrint(ui, "        Function call start in client.")
-        try:
-            print(f'             start -> self.client : {self.client}')
-            print("              Qbleak start build_client before :  {}".format(MainWindows.current_client))
-            print("              start build_client before  :   {}".format(self.client))
-            print("              Qbleak ->start connect ")
-            await self.client.connect()
+            print("             FC ->  start in client -> connect & handler ")
+            MainWindows.UiPrint(ui, "        Function call start in client.")
+            try:
+                await self.client.connect()
+
+            except asyncio.CancelledError:
+                    logger.error("CancelledError - sample")
+                    await self.client.disconnect()
+            except Exception as e:
+                    err = str(e)
+                    print(err)
+                    #print("connected : {}".format(connected))
+                    await self.client.disconnect()
+
             print("              Qbleak ->end connect ")
             print(f'             Qbleak -> self.client : {self.client}')
 
@@ -425,73 +436,35 @@ class QBleakClient(QObject):
                 _value = bytes(await self.client.read_gatt_char(FirmwareRevisionCharacteristicUuidString))
             except Exception as e:
                 _value = str(e).encode()
-            print(f'            4       firmware value : {_value}')
+            print(f'             4       firmware value : {_value}')
             fw_revision = _value.decode("utf-8")
             print("             5       [FirmwareRevision str: {0} ".format(fw_revision))
 
             print(self.client)
             #await self.client.start_notify(DataCharacteristicUUIDString, self.handle_rx)   #todo:  guy version :UART_TX_CHAR_UUID
             #await self.client.start_notify(DataCharacteristicUUIDString, self.handle_rx)
-            await self.client.start_notify(DataCharacteristicUUIDString, self.data_notification_handler)
+
+            if (self.client.is_connected):
+                await self.client.start_notify(DataCharacteristicUUIDString,    self.data_notification_handler)
+                #await self.client.start_notify(TestingCharacteristicUUIDString, self.testing_notification_handler)
             #await self.client.start_notify(UART_TX_CHAR_UUID, self.handle_rx)
             #await self.client.start_notify(UART_SERVICE_UUID, self.handle_rx)
-            print("Connect ->  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ")
-            MainWindows.UiPrint(ui, "        Device is Connect")
+                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  ")
+                print("Connect ->  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!  ")
+                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  ")
+                MainWindows.UiPrint(ui, "        Device is Connect")
 
-            ######
-            #time.sleep(1)
-            ######## Send as i do #########
-            #
-            # try:
-            #     _value = bytes(await self.client.read_gatt_char(FirmwareRevisionCharacteristicUuidString))
-            # except Exception as e:
-            #     _value = str(e).encode()
-            # fw_revision = _value.decode("utf-8")
-            # logger.info("[FirmwareRevision str: {0} ".format(fw_revision))
+            else:
+                print(" CAN Not Connect ")
 
-            # b = bytearray(
-            #     [0xa2, 0x61, 0x64, 0x19, 0x0f, 0xa0, 0x62, 0x63, 0x68, 0x86, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05])
-            # try:
-            #     await self.client.write_gatt_char(commandCharacteristicUUIDString, b)
-            #     await self.client.write_gatt_char(CommandServiceUUIDString, b)
-            #     # _value = bytes(await client.write_gatt_char(CurrentTimeCharacteristicUuidString, write_data))
-            #     print(" Send msg ok  : {} ".format(b))
-            # except Exception as e:
-            #     _value = str(e).encode()
-            #
-            # try:
-            #     await self.client.write_gatt_char(commandCharacteristicUUIDString, b)
-            #     # _value = bytes(await client.write_gatt_char(CurrentTimeCharacteristicUuidString, write_data))
-            #     print(" Send msg : {} ".format(b))
-            # except Exception as e:
-            #     _value = str(e).encode()
-            #
-            # try:
-            #     await self.client.write_gatt_char(CommandServiceUUIDString, b)
-            #     # _value = bytes(await client.write_gatt_char(CurrentTimeCharacteristicUuidString, write_data))
-            #     print(" Send msg : {} ".format(b))
-            # except Exception as e:
-            #     _value = str(e).encode()
-            #
-            # time.sleep(2)
-            #
-            # try:
-            #     print("here ")
-            #     await self.client.write_gatt_char(CommandServiceUUIDString, b)
-            #     await self.client.write_gatt_char(CurrentTimeCharacteristicUuidString, b)
-            #     print(" Send msg : {} ".format(b))
-            # except Exception as e:
-            #     _value = str(e).encode()
-
-
-        except Exception as e:
-            MainWindows.UiPrint(ui, "       Something went wrong - error: {}".format(e))
-            print("             start function Error")
     async def stop(self):
         print("FC -> QBleakClient -> Stop Func")
         await self.client.disconnect()
+        await self.client.disconnect()
         MainWindows.UiPrint(ui, "QBleakClient -> Disconnect From Device")
-
+        #await self.client.stop_notify(DataCharacteristicUUIDString)
+        print(self.client)
+        print(self.client.is_connected)
     async def write(self, data):
         print("FC -> write ")
         await self.client.write_gatt_char(UART_RX_CHAR_UUID, data)
@@ -502,20 +475,18 @@ class QBleakClient(QObject):
         await self.client.write_gatt_char(UUID, data)
         print("send:", data)
 
-    async def read_gatt(self): # todo: add data + uuid
-        print("FC -----> Read gatt ")
+    async def read_gatt(self, char_specifier=HardwareRevisionCharacteristicUuidString):
         try:
-            _value = bytes(await self.client.read_gatt_char(HardwareRevisionCharacteristicUuidString))
+            _value = bytes(await self.client.read_gatt_char(char_specifier))
         except Exception as e:
             _value = str(e).encode()
-        print(f'Ican Read all data value : {_value}')
         return _value
 
 
     def handle_disconnect2(self, _: BleakClient):  # (self) -> None:
         MainWindows.UiPrint(ui, "QBleakClient -> handle_disconnect2 call Back from clien")
         MainWindows.UiPrint(ui, "Close The File")
-        file.close()
+        #file.close()
         MainWindows.UiPrint(ui, "+++++   Device is Disconnect   +++++")
         MainWindows.progBarUpdate(ui, 0, 0)
         # cancelling all tasks effectively ends the program
@@ -533,6 +504,30 @@ class QBleakClient(QObject):
         # print("received:", data)
         self.messageChanged.emit(data)
 
+    def testing_notification_handler(self, _: BleakGATTCharacteristic, data: bytearray):
+        global all_data_received
+        global PacketsExpected
+        global PacketsArrived
+        global DataBytesExpected
+        global DataBytesArrived
+        global DataBuffer
+
+        print("i get somthing ")
+        PacketsArrived += 1
+        logger.info("testing_notification_handler")
+        if PacketsArrived == 1:
+            data_as_json = cbor2.loads(binascii.a2b_hex(data.hex()))
+            logger.info(json.dumps(data_as_json, indent=4, sort_keys=True))
+            DataBytesExpected = data_as_json["len"]
+            logger.info("DataBytesExpected={}".format(DataBytesExpected))
+            DataBuffer.clear()
+            DataBytesArrived = 0
+            logger.info(data_as_json)
+        else:
+            DataBytesArrived += len(data)
+            DataBuffer += data
+            if DataBytesExpected == DataBytesArrived:
+                all_data_received = True
     def data_notification_handler(self, _: BleakGATTCharacteristic, data: bytearray):
         global DataBytesExpected
         global DataBuffer
@@ -649,10 +644,10 @@ class QBleakClient(QObject):
                 self.corrent_count += 1
 
             if self.calc == 1:
-                timer = AmitFunction.calculate_duration(int((self.endMeasure * 1000) - (self.startMeasure * 1000)), 100, int(self.Elem), Currentcount=self.corrent_count)
+                #timer = AmitFunction.calculate_duration(int((self.endMeasure * 1000) - (self.startMeasure * 1000)), 100, int(self.Elem), Currentcount=self.corrent_count)
                 self.calc = 0
-                MainWindows.hourUpdate(ui, min=timer[0], sec=timer[1])
-                MainWindows.progBarUpdate(ui, counter=self.countersample, Element=self.Elem)
+                #MainWindows.hourUpdate(ui, min=timer[0], sec=timer[1])
+                #MainWindows.progBarUpdate(ui, counter=self.countersample, Element=self.Elem)
                 #print("@@@---------------------->>>>>>> timer function ")
                 #print(f' timerAvr:  {timer}')
                 #print("cal time (stim , Endtime , Delta =200 , Elem = 64000 , count) : ")
@@ -760,26 +755,73 @@ class MainWindows(QMainWindow, Ui_MainWindow):
 
         self.pushButton_2.clicked.connect(self.handle_pb2)
         self.pushButton_3.clicked.connect(self.handle_pb3)
+        self.pushButton_3.setText("Ep get Data + delete")
         self.pushButton_4.clicked.connect(self.handle_pb4)
         self.pushButton_5.clicked.connect(self.handle_pb5)
         self.pushButton_6.clicked.connect(self.handle_pb66)
-
         self.pushButton_4.setText("Sample & save ")
+        self.pushButton_6.setText("start sample")
+        self.cmdline.textChanged.connect(self.filter_cmd)
+        self.pushButton_1_test.clicked.connect(self.fcbor1)
+        self.pushButton_1_test.setText("Run Bist")
+        self.pushButton_2_test.clicked.connect(self.fcbor2)
+        self.pushButton_3_test.clicked.connect(self.fcbor3)
+        self.pushButton_4_test.clicked.connect(self.fcbor4)
 
+    @qasync.asyncSlot()
+    async def fcbor1(self):
+        write_data = bytearray(b'\x01')
+        print("Sending 'run built in self test' command to EP ")
+        try:
+            _value = await self.current_client.write_gatt_char(TestingCharacteristicUUIDString, write_data)
+        except Exception as e:
+            _value = str(e).encode()
+
+        print("fcbor1")
+
+    def fcbor2(self):
+        print("fcbor2")
+
+    def fcbor3(self):
+        print("fcbor3")
+
+    def fcbor4(self):
+        print("fcbor4")
+
+    def filter_cmd(self):
+        global devices
+        global list_Device
+        print("call filter")
+        self.comboBox.clear()
+        st = (self.cmdline.toPlainText())
+        try:
+            for i, device in enumerate(devices):
+                if st in (str(device[1][0].name)):
+                    self.comboBox.insertItem(i, (str(device[1][0].name) + "  " + str(device[1][1].rssi)), device)
+                    print("add item   {}".format(i))
+
+                # if st in (str(item[0].name)):
+                #     # dict  2 Add to gui
+                #     print("add")
+                #     print(device[1][0].name)
+                #     for i, device in enumerate(devices):
+                #         self.comboBox.insertItem(i, (str(device[1][0].name) + "  " + str(device[1][1].rssi)), device)
+                #         print("add item   {}".format(i))
+                #         print(" device    {}".format(str(device[1][0].name)))
+
+
+        except:
+            print("error - filter cmd")
 
     def end_sample(self, buffer):
         print(buffer)
         with open(self.FileNameJson, 'w') as f:
             json.dump(buffer, f)
-
         print("END HERE")
 
     @qasync.asyncSlot()
     async def handle_pb66(self):
-        print(" ")
-        print(" ")
         print("     self.handle_pb66  --- > sample now ")  # send somthing here
-        # await self._client.start_notify(DataCharacterist
 
         sample_delay = 0 # after 2 sec
         command_id = 0  # SampleNow Command
@@ -789,7 +831,6 @@ class MainWindows(QMainWindow, Ui_MainWindow):
         scale = 0
         odr = 0
         sensor_id = 99
-
         logger.info("======== Sample at: {} [{}] ========".format(
             sample_at_ts, time.strftime('%H-%M-%S', time.localtime(sample_at_ts))))
         write_data = bytearray(struct.pack('=HHHHHI', command_id, sensor_id, odr, scale, duration, sample_at_ts))
@@ -798,23 +839,10 @@ class MainWindows(QMainWindow, Ui_MainWindow):
                     "sensor_id={1} ; odr={2} ; scale={3} ; duration={4} ; sample_at_ts={5})".
                     format(command_id, sensor_id, odr, scale, duration, sample_at_ts))
 
-
         try:
             _value = await self.current_client.write(write_data)
         except Exception as e:
             _value = str(e).encode()
-
-        write_data = bytearray(struct.pack('=HHHHHI', command_id, sensor_id, odr, scale, duration, sample_at_ts))
-
-        # sensor_id = 0x99
-        # print("     Sending Sample-All command to EP (command_id={0} ;"
-        #       "sensor_id={1} ; odr={2} ; scale={3} ; duration={4} ; sample_at_ts={5})".
-        #       format(command_id, sensor_id, odr, scale, duration, sample_at_ts))
-        #
-        # try:
-        #     _value = await self.current_client.write(write_data)
-        # except Exception as e:
-        #     _value = str(e).encode()
 
         print("     _Value: {0} ".format(_value))
         print(" END PB 66 ")
@@ -826,6 +854,17 @@ class MainWindows(QMainWindow, Ui_MainWindow):
 
     @qasync.asyncSlot()
     async def handle_pb2(self):
+        global address_device
+        global data_received_event
+        global all_data_received
+        global DataNotificationState
+        global verbose
+        global mac_addr
+        global hw_revision
+        global fw_revision
+        global output_path
+        global serial_number
+        global data_received_event
         print("self.handle_pb2") # send somthing here
         #await self._client.start_notify(DataCharacteristicUUIDString, data_notification_handler)
         # write_data = bytearray(struct.pack('BBH', 0, 0, 0))
@@ -836,18 +875,78 @@ class MainWindows(QMainWindow, Ui_MainWindow):
         #     _value = str(e).encode()
 
         # result = self.cmdline.toPlainText() # string here
-        #
+
+
+        try:
+            _value = bytes(await self.current_client.read_gatt())
+            print(_value)
+        except Exception as e:
+            _value = str(e).encode()
+
+
         # try:
-        #     _value = bytes(await self.client.read_gatt_char(HardwareRevisionCharacteristicUuidString))
+        #     _value = await self.current_client.write(write_data)
         # except Exception as e:
         #     _value = str(e).encode()
-        # print(f'33        value : {_value}')
         #
-        # try:
-        #     _value = bytes(await self._client.read_gatt_char(HardwareRevisionCharacteristicUuidString))
-        # except Exception as e:
-        #     _value = str(e).encode()
-        # print(f'44       value : {_value}')
+        # write_data = bytearray(struct.pack('=HHHHHI', command_id, sensor_id, odr, scale, duration, sample_at_ts))
+
+        # if (run_bist):
+        #     write_data = bytearray(b'\x01')
+        #     logger.info("Sending 'run built in self test' command to EP ")
+        #
+        #     try:
+        #         _value = await client.write_gatt_char(TestingCharacteristicUUIDString, write_data)
+        #     except Exception as e:
+        #         _value = str(e).encode()
+        #
+        #     logger.info("[Characteristic Command   ] Write Value: {0} ".format(to_hex(write_data)))
+        # else:
+        write_data = bytearray(b'\x02')
+        logger.info("Sending 'get built in self test results' command to EP ")
+
+
+        try:
+            _value = await self.current_client.writedata(TestingCharacteristicUUIDString,write_data)
+        except Exception as e:
+            _value = str(e).encode()
+
+            logger.info("[Characteristic Command   ] Write Value: {0} ".format(to_hex(write_data)))
+
+
+            while all_data_received is False: # TODO: AMIT
+                # data_received_event.clear()
+                # data_received_waiter_task = asyncio.create_task(waiter(data_received_event))
+                # try:
+                #     await asyncio.wait_for(data_received_waiter_task, timeout=5)
+                # except asyncio.CancelledError:
+                #     print("CancelledError - BUILT IN SELF TEST")
+                # except asyncio.TimeoutError:
+                #     print("Data receive timeout - BUILT IN SELF TEST")
+                #     return False
+                print("start Collecting data")
+                data_received_event.clear()
+                # data_received_waiter_task = asyncio.create_task(waiter(data_received_event))
+                # await event.wait() !!
+                try:
+                    print("######################   start asyncio  ##########################{0}")
+                    data_received_event = asyncio.Event()
+                    print(data_received_event.is_set())
+                    print(data_received_event)
+                    print("                                 i start to wait here !!!!!!!!!!!!!!!!!!!!")
+                    await data_received_event.wait()
+                    print("                                 i am wait here  !!!!!!!!!!!!!!!!!!!!!!!!!")
+
+                except (asyncio.CancelledError, asyncio.TimeoutError) as e:
+                    logger.error(e)
+                    print("222222222222222222222222222222222222")
+                    all_data_received = True
+
+            data_as_json = cbor2.loads(binascii.a2b_hex(DataBuffer.hex()))
+            logger.info(json.dumps(data_as_json, indent=4, sort_keys=True))
+
+
+
         #
         #
         # print(" input  string : {} ".format(result))
@@ -981,9 +1080,6 @@ class MainWindows(QMainWindow, Ui_MainWindow):
                     output_path = base_path + '_{}'.format(i)
         if not os.path.exists(output_path):
             os.makedirs(output_path)
-
-
-        print("######################   start   ##########################")
 
         print("######################   Start Fetch PB4     ##########################")
         try:
@@ -1153,6 +1249,9 @@ class MainWindows(QMainWindow, Ui_MainWindow):
             _value = bytes(await self.current_client.writedata(CurrentTimeCharacteristicUuidString, write_data))
         except Exception as e:
             _value = str(e).encode()
+
+        # read the cts - >
+
 
 
     @qasync.asyncSlot()
@@ -1572,119 +1671,40 @@ class MainWindows(QMainWindow, Ui_MainWindow):
 
     @qasync.asyncSlot()
     async def handle_pb3(self):
-        print("=================='handle_pb3  =================")
+        print("========         Handle_pb3            =========")
+        print("======== Delete all samples request ============")
+        command_id = 2  # Delete all files command
+        write_data = bytearray(struct.pack('=H', command_id))
+        print("Sending Delete all samples request command to EP (command_id={0})".format(command_id))
+
         try:
-            write_data = bytearray(struct.pack('=H', 2))
-            print(write_data)
-            await self.current_client.write(write_data) # send data
-            print("write good")
+            _value = await self.current_client.write_gatt_char(commandCharacteristicUUIDString, write_data)
         except Exception as e:
             _value = str(e).encode()
-            print(f'             get error : -> : {_value}')
+        logger.info("[Characteristic Command   ] Write Value: {0} ".format(to_hex(write_data)))
 
-        print("get data")
-        print("++++++++")
-        await self.current_client.read_gatt()  # send data - to fix it !
-        print("after call ")
+        _value = await self.current_client.read_gatt(ModelNumberNameCharacteristicUuidString)
+        print(_value)
+        _value = await self.current_client.read_gatt(SerialNumberCharacteristicUuidString)
+        print(_value)
+        serial_number = _value.decode("utf-8")
+        print("[SerialNumber str: {0} ".format(serial_number))
 
+        _value = await self.current_client.read_gatt(FirmwareRevisionCharacteristicUuidString)
+        print(_value)
+        fw_revision = _value.decode("utf-8")
+        print("[FirmwareRevision str: {0} ".format(fw_revision))
 
+        _value = await self.current_client.read_gatt(HardwareRevisionCharacteristicUuidString)
+        print(_value)
+        hw_revision = _value.decode("utf-8")
+        hw = get_hw_type(hw_revision)
+        print(hw)
+        print("[HardwareRevision str: {0} ".format(hw_revision))
 
-        #await self._client.client.read_gatt_char(HardwareRevisionCharacteristicUuidString)  # second method
-        #await self._client.client.read(HardwareRevisionCharacteristicUuidString)
+        _value = await self.current_client.read_gatt(ManufacturerNameCharacteristicUuidString)
+        print(_value)
 
-
-
-
-        # try:
-        #     _value = bytes(await self.client.read_gatt_char(HardwareRevisionCharacteristicUuidString))
-        # except Exception as e:
-        #     _value = str(e).encode()
-        #     print(_value)
-        # print(f'             2        value : {_value}')
-
-
-        # message = "self.message_lineedit.text()"
-        # if message:
-        #     cmd = "set_scale_60"
-        #     await self.current_client.write(cmd.encode())# one method
-        #     await self._client.client.write_gatt_char(commandCharacteristicUUIDString, cmd.encode())# second method
-
-
-        # try:
-        #     print(type(self.client))
-        #     print("pass 3")
-        # except Exception as e:
-        #     print(e)
-        #     print("error 3")
-
-        #
-        # try:
-        #     _value = bytes(await self.client.read_gatt_char(HardwareRevisionCharacteristicUuidString))
-        # except Exception as e:
-        #     _value = str(e).encode()
-        # print(f'3        value : {_value}')
-
-        # try:
-        #     _value = bytes(await self._client.read_gatt_char(HardwareRevisionCharacteristicUuidString))
-        # except Exception as e:
-        #     _value = str(e).encode()
-        #
-        # hw_revision = _value.decode("utf-8")
-        # hw = get_hw_type(hw_revision)
-        # logger.info("[HardwareRevision str: {0} ".format(hw_revision))
-        #
-        # try:
-        #     _value = bytes(await self._client.read_gatt_char(FirmwareRevisionCharacteristicUuidString))
-        # except Exception as e:
-        #     _value = str(e).encode()
-        #
-        # fw_revision = _value.decode("utf-8")
-        # logger.info("[FirmwareRevision str: {0} ".format(fw_revision))
-        #
-        # try:
-        #     _value = bytes(await self._client.read_gatt_char(SerialNumberCharacteristicUuidString))
-        # except Exception as e:
-        #     _value = str(e).encode()
-        #
-        # serial_number = _value.decode("utf-8")
-        # logger.info("[SerialNumber str: {0} ".format(serial_number))
-        #
-        # #logger.info("Connected: {0}".format(connected))
-        # logger.info("[Service Data         ] {0}: {1}".format(DataServiceUUIDString, "Data"))
-        # logger.info("[Characteristic Data  ] {0}: {1}".format(DataCharacteristicUUIDString, "Data"))
-        #
-
-        #
-        # client = self.current_client
-        # print(client)
-        # print(self._client)
-        # global CommandServiceUUIDString, commandCharacteristicUUIDString
-        # print("self.handle_pb3")
-        # b = bytearray([0xa2, 0x61, 0x64, 0x19, 0x0f, 0xa0, 0x62, 0x63, 0x68, 0x86, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05])
-        # # try:
-        #
-        #     try:
-        #         _value = bytes(await client.read_gatt_char(HardwareRevisionCharacteristicUuidString))
-        #     except Exception as e:
-        #         _value = str(e).encode()
-        #     print(_value)
-        #
-        #     try:
-        #         _value = bytes(await client.client.read_gatt_char(HardwareRevisionCharacteristicUuidString))
-        #     except Exception as e:
-        #         _value = str(e).encode()
-        #     print(_value)
-        #
-        #     await client.write_gatt_char(commandCharacteristicUUIDString, b)
-        #     _value = await client.write_gatt_char(commandCharacteristicUUIDString, b)
-        #     await self.current_client.write.write_gatt_char(CommandServiceUUIDString, b)
-        #     _value = await self._client.write_gatt_char(CommandServiceUUIDString, b)
-        #     # _value = bytes(await client.write_gatt_char(CurrentTimeCharacteristicUuidString, write_data))
-        #     print(" Send msg : {} ".format(b))
-        # except Exception as e:
-        #     _value = str(e).encode()
-        #     print(_value)
-        # print("done ")
 
     @qasync.asyncSlot()
     async def handle_connect(self):
@@ -1721,25 +1741,28 @@ class MainWindows(QMainWindow, Ui_MainWindow):
         ##stop sample disconect
 
         global file , fileJson  # in start scan open file
-        file = open(self.FileName, "a")
-        file.truncate(0) # remove all data
+        #file = open(self.FileName, "a")
+        #file.truncate(0) # remove all data
         #fileJson = open(self.FileNameJson, "w")
 
 
     @qasync.asyncSlot()
     async def handle_scan(self):
         # done
+        global list_Device
+        global devices
         self.pb_scan.setEnabled(False)
         print("hande_scan function call ")
         MainWindows.UiPrint(ui, "Start Scanning For BLE")
 
-        self.devices.clear()
+        self.devices.clear()                                                # List
         self.comboBox.clear()
-        devices = await BleakScanner.discover(timeout=4, return_adv=True)
+        devices = await BleakScanner.discover(return_adv=True)   # Scan
         self.devices.extend(devices)
         # "address", "name", "details", "_rssi", "_metadata"
         print("==============")
         print(devices)
+        list_Device = devices
         print("==============")
         # 1.list preper for gui
         dev = []
@@ -1748,12 +1771,10 @@ class MainWindows(QMainWindow, Ui_MainWindow):
         except :
             print(" none type value ")
         #we can order todo: add smart filter by val
-
+        # list
         for i, device in enumerate(self.devices):
                 dev.append(device)
-
-        #dev.sort(key=lambda x: x.name)
-        # 2 Add to gui
+        # dict  2 Add to gui
         for i, device in enumerate(devices):
             self.comboBox.insertItem(i, (str(device[1][0].name)+ "  " + str(device[1][1].rssi)), device)
 
@@ -1761,17 +1782,11 @@ class MainWindows(QMainWindow, Ui_MainWindow):
         self.pb_scan.setChecked(False)
         self.pb_scan.setEnabled(True)
 
+
         # if somthing found in scan
         if len(dev) > 0:
             self.comboBox.setEnabled(True)
             self.pb_connect.setEnabled(True)
-
-    # def ComboboxItemPressed(self):
-    #     print("ComboboxItemPressed")
-    #     global deviceComboboxBLE
-    #     deviceComboboxBLE = self.comboBox.currentText()
-    #     print("here   ---> ComboboxItemPressed")
-    #     print(self)
 
     def handle_message_changed(self, message):
         self.log_edit.appendPlainText(f"msg: {message.decode()}")
@@ -1788,9 +1803,12 @@ class MainWindows(QMainWindow, Ui_MainWindow):
 
     @qasync.asyncSlot()
     async def handle_disc(self):
-        print("")
+        print("i need close all ble + obj")
         # file Close  #  todo: Comment maybe to add also here ! ?
-        await self._client.stop()  # disconnect and call disonnect 2 + Close File
+        await self.current_client.stop()  # disconnect and call disonnect 2 + Close File
+        for task in asyncio.all_tasks():
+            print(task)
+            #task.cancel()
         self.pb_scan.setEnabled(True)
         self.pb_connect.setEnabled(True)
         self.comboBox.setEnabled(True)
@@ -1799,7 +1817,7 @@ class MainWindows(QMainWindow, Ui_MainWindow):
         self.pb_stop_sample.setEnabled(False)
 
         print(self._client)
-        self.end_sample(self._client.databuffer)
+        #self.end_sample(self._client.databuffer)
 
 
 def main():
